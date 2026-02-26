@@ -1,0 +1,53 @@
+[project]
+name = "telegram-keywords-bot"
+version = "0.1.0"
+description = "Telegram бот для получения ключевых слов из Яндекс Wordstat"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+
+dependencies = [
+    "aiogram>=3.4.0",           # Telegram Bot фреймворк
+    "pandas>=2.0.0",            # Работа с таблицами и Excel
+    "openpyxl>=3.1.0",          # Excel файлы (.xlsx)
+    "python-dotenv>=1.0.0",     # Загрузка .env переменных
+    "httpx>=0.25.0",            # HTTP клиент для API запросов
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",            # Фреймворк для тестов
+    "pytest-asyncio>=0.21.0",   # Поддержка async тестов
+    "pytest-cov>=4.1.0",        # Покрытие кода тестами
+    "ruff>=0.1.0",              # Линтер и форматтер
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (сортировка импортов)
+    "N",   # pep8-naming
+    "UP",  # pyupgrade (современный синтаксис)
+]
+ignore = [
+    "E501",  # line too long (длинные строки — не критично)
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: Integration tests (deselect with '-m \"not integration\"')",
+]
