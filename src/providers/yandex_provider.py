@@ -179,12 +179,14 @@ class YandexWordstatProvider(WordstatProvider):
     ) -> list[KeywordRow]:
         """Получить ключевые слова из Яндекс.Wordstat.
 
+        Возвращает исходные фразы + вложенные запросы из поля SearchedAlso.
+
         Args:
             phrases: Список исходных фраз
             with_frequency: Получать ли частотность (если False, будет None)
 
         Returns:
-            Список KeywordRow с данными из Wordstat
+            Список KeywordRow с данными из Wordstat (исходные + вложенные запросы)
         """
         try:
             # 1. Создаём отчёт
@@ -196,8 +198,8 @@ class YandexWordstatProvider(WordstatProvider):
             # 3. Парсим результаты
             results = []
             for item in report_data:
+                # Добавляем исходную фразу
                 phrase = item.get("Phrase", "")
-                # Частотность обычно в поле Shows или SearchedWith
                 frequency = None
                 if with_frequency and "Shows" in item:
                     frequency = item["Shows"]
@@ -209,6 +211,22 @@ class YandexWordstatProvider(WordstatProvider):
                     created_at=datetime.now(),
                 )
                 results.append(row)
+
+                # Добавляем вложенные запросы из SearchedAlso
+                searched_also = item.get("SearchedAlso", [])
+                for related_item in searched_also:
+                    related_phrase = related_item.get("Phrase", "")
+                    related_frequency = None
+                    if with_frequency and "Shows" in related_item:
+                        related_frequency = related_item["Shows"]
+
+                    related_row = KeywordRow(
+                        keyword=related_phrase,
+                        frequency=related_frequency,
+                        source=self.name,
+                        created_at=datetime.now(),
+                    )
+                    results.append(related_row)
 
             # 4. Удаляем отчёт
             await self._delete_report(report_id)
