@@ -1,5 +1,7 @@
 """Обработчики команд и сообщений Telegram бота."""
 
+import asyncio
+
 from aiogram import Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -148,21 +150,41 @@ async def process_limit_choice(callback: CallbackQuery, state: FSMContext) -> No
         await state.clear()
         return
 
-    # Отправляем статус
-    status_message = await callback.message.answer(
-        "⏳ Обрабатываю запрос...\nЭто может занять несколько секунд."
-    )
+    # Отправляем начальный статус с прогресс-баром
+    status_message = await callback.message.answer("🔄 Запуск обработки...\n\n▱▱▱▱▱▱▱▱▱▱ 0%")
 
     try:
-        # Получаем провайдер и данные
+        # Шаг 1: Получение данных
+        await status_message.edit_text("📊 Получение данных из API...\n\n▰▰▱▱▱▱▱▱▱▱ 20%")
         provider = config.get_provider()
         results = await provider.get_keywords(keywords, with_frequency=with_frequency)
 
-        # Ограничиваем количество результатов
-        results = results[:limit]
+        # Шаг 2: Расширение ключевых слов
+        await status_message.edit_text(
+            f"🔍 Расширение ключевых слов...\n\n"
+            f"Получено: {len(results)} вариантов\n\n"
+            f"▰▰▰▰▱▱▱▱▱▱ 40%"
+        )
+        await asyncio.sleep(0.5)  # Небольшая задержка для видимости прогресса
 
-        # Создаём Excel
+        # Шаг 3: Ограничение результатов
+        results = results[:limit]
+        await status_message.edit_text(
+            f"✂️ Применение лимита...\n\nКлючевых слов: {len(results)} из {limit}\n\n▰▰▰▰▰▰▱▱▱▱ 60%"
+        )
+        await asyncio.sleep(0.3)
+
+        # Шаг 4: Создание Excel
+        await status_message.edit_text(
+            f"📄 Создание Excel файла...\n\nЗаписей: {len(results)}\n\n▰▰▰▰▰▰▰▰▱▱ 80%"
+        )
         excel_file = export_to_excel(results)
+
+        # Шаг 5: Финализация
+        await status_message.edit_text(
+            f"📤 Отправка файла...\n\nРазмер: {len(excel_file.getvalue())} байт\n\n▰▰▰▰▰▰▰▰▰▰ 100%"
+        )
+        await asyncio.sleep(0.3)
 
         # Готовим файл для отправки
         input_file = BufferedInputFile(file=excel_file.getvalue(), filename="keywords.xlsx")
