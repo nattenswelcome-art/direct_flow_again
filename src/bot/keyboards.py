@@ -16,3 +16,19 @@ def get_frequency_keyboard() -> InlineKeyboardMarkup:
         ]
     )
     return keyboard
+
+
+def get_limit_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора количества ключевых слов для экспорта.
+
+    Returns:
+        InlineKeyboardMarkup с тремя кнопками (50/100/150 слов)
+    """
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📝 Первые 50 слов", callback_data="limit_50")],
+            [InlineKeyboardButton(text="📊 Первые 100 слов", callback_data="limit_100")],
+            [InlineKeyboardButton(text="📈 Первые 150 слов", callback_data="limit_150")],
+        ]
+    )
+    return keyboard

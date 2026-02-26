@@ -5,7 +5,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
-from src.bot.keyboards import get_frequency_keyboard
+from src.bot.keyboards import get_frequency_keyboard, get_limit_keyboard
 from src.bot.states import KeywordsState
 from src.config import config
 from src.utils.excel_exporter import ExporterError, export_to_excel
@@ -94,12 +94,54 @@ async def process_frequency_choice(callback: CallbackQuery, state: FSMContext) -
 
     with_frequency = callback.data == "with_frequency"
 
+    # Сохраняем выбор частотности
+    await state.update_data(with_frequency=with_frequency)
+
     # Удаляем клавиатуру
     await callback.message.edit_reply_markup(reply_markup=None)
 
-    # Получаем сохранённые ключевые слова
+    # Показываем клавиатуру выбора количества слов
+    await callback.message.answer(
+        "📊 Сколько ключевых слов вывести в файл?",
+        reply_markup=get_limit_keyboard(),
+    )
+
+    # Переходим к выбору лимита
+    await state.set_state(KeywordsState.waiting_for_limit_choice)
+
+    # Подтверждаем callback
+    await callback.answer()
+
+
+@router.callback_query(
+    StateFilter(KeywordsState.waiting_for_limit_choice),
+    lambda c: c.data in ["limit_50", "limit_100", "limit_150"],
+)
+async def process_limit_choice(callback: CallbackQuery, state: FSMContext) -> None:
+    """Обработчик выбора количества ключевых слов.
+
+    Args:
+        callback: Callback от inline-кнопки
+        state: Контекст состояния FSM
+    """
+    if not callback.message or not callback.data:
+        return
+
+    # Получаем лимит из callback_data
+    limit_map = {
+        "limit_50": 50,
+        "limit_100": 100,
+        "limit_150": 150,
+    }
+    limit = limit_map.get(callback.data, 50)
+
+    # Удаляем клавиатуру
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+    # Получаем сохранённые данные
     data = await state.get_data()
     keywords = data.get("keywords", [])
+    with_frequency = data.get("with_frequency", False)
 
     if not keywords:
         await callback.message.answer("❌ Ошибка: ключевые слова не найдены")
@@ -116,6 +158,9 @@ async def process_frequency_choice(callback: CallbackQuery, state: FSMContext) -
         provider = config.get_provider()
         results = await provider.get_keywords(keywords, with_frequency=with_frequency)
 
+        # Ограничиваем количество результатов
+        results = results[:limit]
+
         # Создаём Excel
         excel_file = export_to_excel(results)
 
@@ -125,7 +170,12 @@ async def process_frequency_choice(callback: CallbackQuery, state: FSMContext) -
         # Отправляем файл
         await callback.message.answer_document(
             document=input_file,
-            caption=f"✅ Готово!\n\n📊 Ключевых слов: {len(results)}\n🔧 Источник: {provider.name}",
+            caption=(
+                f"✅ Готово!\n\n"
+                f"📊 Ключевых слов: {len(results)}\n"
+                f"🔧 Источник: {provider.name}\n"
+                f"📝 Лимит: {limit} слов"
+            ),
         )
 
         # Удаляем статус-сообщение

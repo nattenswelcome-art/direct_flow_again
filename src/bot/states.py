@@ -8,3 +8,4 @@ class KeywordsState(StatesGroup):
 
     waiting_for_keywords = State()  # Ожидание ввода ключевых слов
     waiting_for_frequency_choice = State()  # Ожидание выбора частотности
+    waiting_for_limit_choice = State()  # Ожидание выбора количества слов
